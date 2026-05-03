@@ -478,7 +478,8 @@ main{max-width:960px;margin:0 auto;padding:2.5rem 1.75rem 8rem;position:relative
   </div>
   <div class="s-actions">
     <button class="sbtn" onclick="viewInventory()">📦 View Inventory</button>
-    <button class="sbtn" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="sbtn" onclick="exportCSV()">⬇ Download CSV</button>
+    <button class="sbtn accent" onclick="openInventoryInSheets()">📊 Open in Sheets</button>
     <button class="sbtn accent" onclick="clearStorage()">🗑 Clear All</button>
   </div>
 </div>
@@ -1378,12 +1379,26 @@ function exportCSV(){
       const s=Array.isArray(v)?v.join('|'):(v||'');
       return '"'+String(s).replace(/"/g,'""')+'"';
     }).join(','))];
-    const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+    const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8;'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);
     a.download=`FBP_Inventory_${new Date().toISOString().split('T')[0]}.csv`;a.click();
   }catch(e){alert('Export failed: '+e.message)}
 }
-function clearStorage(){
+function openInventoryInSheets(){
+  try{
+    const all=JSON.parse(localStorage.getItem('fbp_inventory')||'[]');
+    if(!all.length){alert('No saved listings to export.');return;}
+    const cols=['sku','brand','workTitle','category','condition','material','color','markedSize','listPrice','seoTitle','hashtags','platforms','datePulled','sourceCost','savedAt'];
+    const hdrs=cols.map(c=>c.charAt(0).toUpperCase()+c.slice(1));
+    const rows=[hdrs.join('\t'),...all.map(r=>cols.map(c=>{
+      const v=r[c];const s=Array.isArray(v)?v.join('|'):(v||'');
+      return String(s).replace(/\t/g,' ');
+    }).join('\t'))];
+    navigator.clipboard.writeText(rows.join('\n')).then(()=>{
+      alert(`✓ ${all.length} listings copied!\n\nNow:\n1. Open Google Sheets (sheets.new)\n2. Click cell A1\n3. Paste (Ctrl+V / Cmd+V)\n\nAll columns will land correctly.`);
+    }).catch(()=>alert('Copy failed — use ⬇ Download CSV instead.'));
+  }catch(e){alert('Error: '+e.message);}
+}
   if(!confirm('Clear ALL saved inventory data? This cannot be undone.'))return;
   localStorage.removeItem('fbp_inventory');localStorage.removeItem('fbp_lastSaved');
   updateStorageBar();

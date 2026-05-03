@@ -213,8 +213,9 @@ footer .memorial{color:var(--mid);font-style:italic}
       </div>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="copyAllTitles()">📋 Copy Titles</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportRefreshCSV()">⬇ Export Filtered CSV</button>
-        <button class="btn btn-orange btn-sm" onclick="exportEtsyCSV()">🟠 Export for Etsy</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportRefreshCSV()">⬇ Download CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="openInSheets()">📊 Open in Google Sheets</button>
+        <button class="btn btn-orange btn-sm" onclick="exportEtsyCSV()">🟠 Etsy CSV</button>
       </div>
     </div>
 
@@ -845,8 +846,26 @@ function copyAllTitles(){
   alert(`Copied ${filteredData.length} titles to clipboard (tab-separated)`);
 }
 function dl(content,filename){
-  const b=new Blob([content],{type:'text/csv;charset=utf-8;'});
+  // UTF-8 BOM ensures Google Sheets opens without encoding issues
+  const BOM='\uFEFF';
+  const b=new Blob([BOM+content],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=filename;a.click();
+}
+
+function openInSheets(){
+  if(!filteredData.length){alert('Upload a CSV first.');return;}
+  // Build TSV (tab-separated) — paste into Google Sheets col A row 1
+  const hdrs=['SKU','Brand','Category','Old Title','SS26 Title','Core Aesthetic','Price','Days Live','Platforms','Hashtags'];
+  const rows=filteredData.map(r=>[
+    r._sku||'',r.Brand||'',r.Category||'',r.Title||'',r._newTitle||'',r._core||'',
+    r.Price||'',r._days||0,r['Listing Platforms']||'',r._ht?r._ht.all.join(' '):''
+  ].map(v=>String(v).replace(/\t/g,' ')).join('\t'));
+  const tsv=hdrs.join('\t')+'\n'+rows.join('\n');
+  navigator.clipboard.writeText(tsv).then(()=>{
+    alert(`✓ ${filteredData.length} rows copied as tab-separated data!\n\nNow:\n1. Open Google Sheets (sheets.new)\n2. Click cell A1\n3. Paste (Ctrl+V / Cmd+V)\n\nAll columns will land in the right cells automatically.`);
+  }).catch(()=>{
+    alert('Could not copy — try the ⬇ Download CSV button instead, then File → Import in Google Sheets.');
+  });
 }
 function ds(){return new Date().toISOString().split('T')[0];}
 function q(s){return'"'+(s||'').replace(/"/g,'""')+'"';}
